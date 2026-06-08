@@ -3,3 +3,7 @@ dist/
 *.log
 .DS_Store
 .env
+
+# Local notes for Claude / personal scratch (never commit)
+CLAUDE.local.md
+*.local.md
