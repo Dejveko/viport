@@ -6,49 +6,59 @@ import {
   useReactTable,
   type SortingState,
 } from '@tanstack/react-table';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import type { Port } from '../types';
+import { ServiceActions } from './ServiceActions';
 
 const col = createColumnHelper<Port>();
 
-const columns = [
-  col.accessor('port', {
-    header: 'Port',
-    cell: (c) => <span className="font-mono font-semibold text-white">{c.getValue()}</span>,
-  }),
-  col.accessor('protocol', {
-    header: 'Proto',
-    cell: (c) => <span className="font-mono uppercase text-white/70">{c.getValue()}</span>,
-  }),
-  col.accessor('state', { header: 'State', cell: (c) => <span className="text-white/70">{c.getValue()}</span> }),
-  col.accessor('localAddress', {
-    header: 'Address',
-    cell: (c) => <span className="font-mono text-white/70">{c.getValue()}</span>,
-  }),
-  col.accessor((r) => r.processName ?? '', {
-    id: 'process',
-    header: 'Process',
-    cell: (c) => c.getValue() || <span className="text-white/30">—</span>,
-  }),
-  col.accessor((r) => r.unit ?? '', {
-    id: 'unit',
-    header: 'Service',
-    cell: (c) =>
-      c.getValue() ? <span className="text-sky-300">{c.getValue()}</span> : <span className="text-white/30">—</span>,
-  }),
-  col.accessor('externallyReachable', {
-    header: 'Reach',
-    cell: (c) =>
-      c.getValue() ? (
-        <span className="rounded-full bg-red-500/20 px-2 py-0.5 text-xs font-medium text-red-300">exposed</span>
-      ) : (
-        <span className="rounded-full bg-white/10 px-2 py-0.5 text-xs text-white/50">local</span>
-      ),
-  }),
-];
+function makeColumns(onChanged?: () => void) {
+  return [
+    col.accessor('port', {
+      header: 'Port',
+      cell: (c) => <span className="font-mono font-semibold text-white">{c.getValue()}</span>,
+    }),
+    col.accessor('protocol', {
+      header: 'Proto',
+      cell: (c) => <span className="font-mono uppercase text-white/70">{c.getValue()}</span>,
+    }),
+    col.accessor('state', { header: 'State', cell: (c) => <span className="text-white/70">{c.getValue()}</span> }),
+    col.accessor('localAddress', {
+      header: 'Address',
+      cell: (c) => <span className="font-mono text-white/70">{c.getValue()}</span>,
+    }),
+    col.accessor((r) => r.processName ?? '', {
+      id: 'process',
+      header: 'Process',
+      cell: (c) => c.getValue() || <span className="text-white/30">—</span>,
+    }),
+    col.accessor((r) => r.unit ?? '', {
+      id: 'unit',
+      header: 'Service',
+      cell: (c) =>
+        c.getValue() ? <span className="text-sky-300">{c.getValue()}</span> : <span className="text-white/30">—</span>,
+    }),
+    col.accessor('externallyReachable', {
+      header: 'Reach',
+      cell: (c) =>
+        c.getValue() ? (
+          <span className="rounded-full bg-red-500/20 px-2 py-0.5 text-xs font-medium text-red-300">exposed</span>
+        ) : (
+          <span className="rounded-full bg-white/10 px-2 py-0.5 text-xs text-white/50">local</span>
+        ),
+    }),
+    col.display({
+      id: 'control',
+      header: 'Control',
+      cell: (c) =>
+        c.row.original.unit ? <ServiceActions unit={c.row.original.unit} onChanged={onChanged} /> : null,
+    }),
+  ];
+}
 
-export function PortTable({ ports }: { ports: Port[] }) {
+export function PortTable({ ports, onChanged }: { ports: Port[]; onChanged?: () => void }) {
   const [sorting, setSorting] = useState<SortingState>([{ id: 'port', desc: false }]);
+  const columns = useMemo(() => makeColumns(onChanged), [onChanged]);
 
   const table = useReactTable({
     data: ports,

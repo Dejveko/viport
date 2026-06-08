@@ -1,8 +1,11 @@
 import { useMemo, useState } from 'react';
 import { useOverview } from './api';
 import { Filters, type FilterState } from './components/Filters';
+import { PortCubes } from './components/PortCubes';
 import { PortTable } from './components/PortTable';
+import { Settings, type ViewMode } from './components/Settings';
 import type { Port } from './types';
+import { usePersistedState } from './usePersistedState';
 
 const DEFAULT_FILTERS: FilterState = {
   proto: 'all',
@@ -23,8 +26,9 @@ function StatCard({ label, value, accent }: { label: string; value: number | str
 }
 
 export default function App() {
-  const { data, error, loading } = useOverview();
+  const { data, error, loading, refresh } = useOverview();
   const [filters, setFilters] = useState<FilterState>(DEFAULT_FILTERS);
+  const [view, setView] = usePersistedState<ViewMode>('viport.view', 'list');
 
   const ports: Port[] = data?.ports ?? [];
 
@@ -55,17 +59,20 @@ export default function App() {
             </h1>
             <p className="text-sm text-white/50">Live ports &amp; systemd services</p>
           </div>
-          <div className="text-right text-xs text-white/40">
-            {error ? (
-              <span className="text-red-400">⚠ {error}</span>
-            ) : loading ? (
-              'connecting…'
-            ) : (
-              <>
-                updated {new Date(data!.generatedAt).toLocaleTimeString()}
-                <span className="ml-2 inline-block h-2 w-2 animate-pulse rounded-full bg-emerald-400 align-middle" />
-              </>
-            )}
+          <div className="flex items-center gap-4">
+            <div className="text-right text-xs text-white/40">
+              {error ? (
+                <span className="text-red-400">⚠ {error}</span>
+              ) : loading ? (
+                'connecting…'
+              ) : (
+                <>
+                  updated {new Date(data!.generatedAt).toLocaleTimeString()}
+                  <span className="ml-2 inline-block h-2 w-2 animate-pulse rounded-full bg-emerald-400 align-middle" />
+                </>
+              )}
+            </div>
+            <Settings view={view} onView={setView} />
           </div>
         </header>
 
@@ -80,8 +87,10 @@ export default function App() {
 
         {!data && !error ? (
           <div className="mt-10 text-center text-white/40">Loading…</div>
+        ) : view === 'cubes' ? (
+          <PortCubes ports={filtered} onChanged={refresh} />
         ) : (
-          <PortTable ports={filtered} />
+          <PortTable ports={filtered} onChanged={refresh} />
         )}
 
         <footer className="mt-8 text-center text-xs text-white/30">

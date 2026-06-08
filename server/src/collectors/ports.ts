@@ -48,7 +48,7 @@ function parseRow(line: string): Port | null {
   };
 }
 
-/** Collect all listening TCP/UDP ports, enriched with owning process & unit. */
+/** Collect all listening TCP/UDP ports, enriched with owning process and unit. */
 export async function collectPorts(): Promise<Port[]> {
   // -t tcp  -u udp  -l listening  -p process  -n numeric  -H no header
   const { stdout } = await exec('ss', ['-tulpnH']);

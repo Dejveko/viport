@@ -1,16 +1,18 @@
 import { useEffect, useRef, useState } from 'react';
 import type { Overview } from './types';
 
+export type ServiceAction = 'start' | 'stop' | 'restart';
+
 interface OverviewState {
   data: Overview | null;
   error: string | null;
   loading: boolean;
 }
 
-/** Poll /api/overview on an interval and expose the latest snapshot. */
-export function useOverview(intervalMs = 2000): OverviewState {
+/** Poll /api/overview on an interval; also expose a manual refresh(). */
+export function useOverview(intervalMs = 2000): OverviewState & { refresh: () => void } {
   const [state, setState] = useState<OverviewState>({ data: null, error: null, loading: true });
-  const timer = useRef<number | undefined>(undefined);
+  const tickRef = useRef<() => void>(() => {});
 
   useEffect(() => {
     let alive = true;
@@ -32,13 +34,23 @@ export function useOverview(intervalMs = 2000): OverviewState {
       }
     }
 
+    tickRef.current = tick;
     tick();
-    timer.current = window.setInterval(tick, intervalMs);
+    const id = window.setInterval(tick, intervalMs);
     return () => {
       alive = false;
-      window.clearInterval(timer.current);
+      window.clearInterval(id);
     };
   }, [intervalMs]);
 
-  return state;
+  return { ...state, refresh: () => tickRef.current() };
+}
+
+/** POST a control action for a systemd unit; throws with the server's message on failure. */
+export async function controlService(unit: string, action: ServiceAction): Promise<void> {
+  const res = await fetch(`/api/services/${encodeURIComponent(unit)}/${action}`, { method: 'POST' });
+  const body = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string };
+  if (!res.ok || !body.ok) {
+    throw new Error(body.error || `HTTP ${res.status}`);
+  }
 }

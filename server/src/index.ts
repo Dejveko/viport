@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 import Fastify from 'fastify';
 import { collectPorts } from './collectors/ports';
 import { collectServices } from './collectors/services';
+import { ControlError, controlService, type ServiceAction } from './control';
 import { buildOverview } from './merge';
 
 const PORT = Number(process.env.PORT ?? 4399);
@@ -13,6 +14,17 @@ app.get('/api/health', async () => ({ ok: true, uid: process.getuid?.() ?? null 
 app.get('/api/overview', async () => buildOverview());
 app.get('/api/ports', async () => ({ ports: await collectPorts() }));
 app.get('/api/services', async () => ({ services: await collectServices() }));
+
+// Phase 2 — control: start | stop | restart a systemd unit.
+app.post<{ Params: { unit: string; action: string } }>('/api/services/:unit/:action', async (req, reply) => {
+  try {
+    return await controlService(req.params.unit, req.params.action as ServiceAction);
+  } catch (e) {
+    const status = e instanceof ControlError ? e.status : 500;
+    reply.code(status);
+    return { ok: false, error: e instanceof Error ? e.message : String(e) };
+  }
+});
 
 async function main() {
   // Serve the built frontend when present (production). In dev, Vite proxies /api.
